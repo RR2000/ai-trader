@@ -1,3 +1,4 @@
+import time
 from abc import ABC
 
 import gym
@@ -13,32 +14,25 @@ class TradingEnvironment(gym.Env, ABC):
         self.current_step = window_size
         self.max_step = 0
 
-        min_val = np.min(data)
-        max_val = np.max(data)
-        self.data = data = (data - min_val) / (max_val - min_val)
+        self.data = data
 
-        self.data['Action'] = np.array(len(data))
-        self.data['USD'] = np.array(len(data))
-        self.data['Crypto'] = np.array(len(data))
-        self.data['Steps'] = window_size
-
-        self.initialTotal = 1
-        self.USDBalance = self.initialTotal / 2
-        self.CryptoBalance = (self.initialTotal / 2) / self.data.iloc[self.current_step]['Close']
-
-        # Keep only the 'Steps' feature
-        self.selected_features = ['Close', 'USD', 'Crypto']
+        self.USDBalance = 0.5
+        self.CryptoBalance = 0.5
+        self.selected_features = data.columns
         num_features = len(self.selected_features)
         self.observation_space = gym.spaces.Box(low=-np.inf, high=np.inf, shape=(window_size, num_features))
         self.action_space = gym.spaces.Discrete(3)  # buy, sell, hold
         self.data = self.data.reset_index(drop=True)
 
-    # The rest of the class remains unchanged
+        self.data['Action'] = np.array(len(data))
+        self.data['USD'] = np.array(len(data))
+        self.data['Crypto'] = np.array(len(data))
+        self.data['Steps'] = self.current_step
 
     def reset(self, **kwargs):
         self.current_step = self.window_size
-        self.USDBalance = self.initialTotal / 2
-        self.CryptoBalance = (self.initialTotal / 2) / self.data.iloc[self.current_step]['Close']
+        self.USDBalance = 0.5
+        self.CryptoBalance = 0.5
         self.data['Action'] = np.array(len(self.data))
         self.data['USD'] = np.array(len(self.data))
         self.data['Crypto'] = np.array(len(self.data))
@@ -81,7 +75,16 @@ class TradingEnvironment(gym.Env, ABC):
 
             new_total_balance = self.USDBalance + self.CryptoBalance * next_price
 
-            reward += new_total_balance - current_total_balance
+            try:
+                if np.isfinite(new_total_balance) and np.isfinite(current_total_balance):
+                    reward += new_total_balance - current_total_balance
+                else:
+                    raise ValueError("Encountered an invalid value during reward calculation.")
+            except ValueError as e:
+                print(e)
+                print(self.USDBalance)
+                print(self.CryptoBalance)
+                reward = 0
 
             self.data.at[self.current_step, 'Balance'] = new_total_balance
 
@@ -99,7 +102,7 @@ class TradingEnvironment(gym.Env, ABC):
 
     def render(self):
         start = self.window_size + 1
-        fig, (ax1, ax2) = plt.subplots(2, 1, figsize=(12, 12))
+        fig, (ax1) = plt.subplots(1, 1, figsize=(12, 12))
 
         ax1.plot(self.data['Close'][start:self.current_step], label='Close')
         buy_signals = self.data.iloc[start:self.current_step]['Action'] == 0
@@ -116,10 +119,5 @@ class TradingEnvironment(gym.Env, ABC):
         ax1.set_ylabel('Price')
         ax1.legend(loc='upper left')
 
-        ax2.plot(self.data['Balance'][start:self.current_step], label='Total Balance')
-        ax2.set_title('Total Balance History')
-        ax2.set_xlabel('Steps')
-        ax2.set_ylabel('Total Balance (USD)')
-
         plt.show()
-
+        plt.close()
