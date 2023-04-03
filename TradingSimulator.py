@@ -77,16 +77,24 @@ def main():
     data = get_data_and_technical_indicators("src/data/historical_data.csv")
     # 10_080 one week in minutes
     one_week = 10_080
-    n_of_weeks = 0.5
+    n_of_weeks = 2
+    total_test_balance = 10000.00
+    epochs = 5
+
     weeks_in_minutes = int(one_week * n_of_weeks)
 
     total_percentage_difference = 0
     my_bot_total_gain_loss = 0
     benchmark_total_gain_loss = 0
 
-    total_test_balance = 10000
-    epochs = 10
     e_balance = total_test_balance / epochs
+
+    if verbose >= 1:
+        print(f"Initial total balance: ${round(total_test_balance)}")
+        print(f"Epochs               :  {epochs}")
+        print(f"Minutes/epoch        :  {weeks_in_minutes} minutes ({n_of_weeks} weeks)")
+        print(f"Balance per epoch    : ${round(e_balance)}")
+
     for _ in range(epochs):
         rnd = randint(100, len(data) - weeks_in_minutes - 1)
         split_data = data[rnd: weeks_in_minutes + rnd]
@@ -107,22 +115,28 @@ def main():
         benchmark_total_gain_loss += (final_price / initial_price) * initial_balance
 
         if verbose >= 2:
-            print(f"Initial balance: {initial_balance}$")
-            print(f"Final balance: {final_balance}$")
-            print(f"MyBot    {my_bot_gain}%")
-            print(f"Benchmark {benchmark}%")
-        if verbose >= 1:
-            print(f"Difference from benchmark {difference:+.2} pt%")
+            print(f"Initial balance           : {round(initial_balance, 2)}$")
+            print(f"Final balance             : {round(final_balance, 2)}$")
+            print(f"Total gain                : {round(final_balance - initial_balance, 2)}")
+            print(f"MyBot                     : {my_bot_gain:+.2}%")
+            print(f"Benchmark                 : {benchmark:+.2}%")
+            print(f"Difference from benchmark : {difference:+.2} pt%")
+        if verbose == 1:
+            print(
+                f"Difference from benchmark {round(difference, 2)} pt%"
+                f"   \tTotal  gain ${round(final_balance - initial_balance, 2)}")
 
     print()
     print()
     print("TEST FINISHED")
     print(f"{epochs} tests")
-    print(f"Total difference from benchmark: {round(total_percentage_difference, 2)}%")
-    print(f"My bot     balance $: {round(my_bot_total_gain_loss, 2)}$")
-    print(f"My bot     balance %: {round(my_bot_total_gain_loss/total_test_balance, 2)}%")
-    print(f"Benchmark balance  $: {round(benchmark_total_gain_loss, 2)}$")
-    print(f"Benchmark balance  %: {round(benchmark_total_gain_loss/total_test_balance, 2)}%")
+    print(f"Total difference from benchmark: {round(total_percentage_difference, 2):+}%")
+    print()
+    print(f"My bot     balance $: {round(my_bot_total_gain_loss, 2):+}$")
+    print(f"My bot     balance %: {round(((my_bot_total_gain_loss / total_test_balance) - 1) * 100, 2):+}%")
+    print()
+    print(f"Benchmark  balance $: {round(benchmark_total_gain_loss, 2):+}$")
+    print(f"Benchmark  balance %: {round(((benchmark_total_gain_loss / total_test_balance) - 1) * 100, 2):+}%")
 
 
 if __name__ == "__main__":
