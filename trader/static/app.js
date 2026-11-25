@@ -200,7 +200,7 @@
       ya = mid + up; yb = mid - up;
     }
     svg.appendChild(el("text", { class: "end-label", x: W - m.r + 8, y: ya + 4 }, "AI"));
-    svg.appendChild(el("text", { class: "end-label", x: W - m.r + 8, y: yb + 4 }, narrow ? "Hold" : "Buy & hold"));
+    svg.appendChild(el("text", { class: "end-label", x: W - m.r + 8, y: yb + 4 }, narrow ? "B&H" : "Buy & hold"));
 
     const hover = el("g", { visibility: "hidden" });
     const cross = el("line", { class: "cross", y1: m.t, y2: H - m.b });

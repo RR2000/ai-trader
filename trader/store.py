@@ -68,7 +68,7 @@ class Step:
 class Store:
     def __init__(self, conninfo: str = "", **params):
         self.conninfo = conninfo
-        self.params = {"connect_timeout": 5, "options": "-c statement_timeout=10000 -c TimeZone=UTC", **params}
+        self.params = {"connect_timeout": 10, "options": "-c statement_timeout=10000 -c TimeZone=UTC", **params}
 
     def connect(self) -> psycopg.Connection:
         return psycopg.connect(self.conninfo, row_factory=dict_row, **self.params)

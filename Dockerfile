@@ -1,4 +1,4 @@
-# Paper-trading service: NumPy inference of the 2023 model, no TensorFlow (about 200 MB instead of 2 GB).
+# Paper-trading service: NumPy inference of the 2023 model, no TensorFlow in the image (329 MB in all, measured in CI).
 # Python 3.14: 3.15 is out but h5py has no wheels for it yet.
 FROM python:3.14.10-slim
 
