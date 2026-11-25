@@ -1,3 +1,4 @@
+import os
 import time
 
 import numpy as np
@@ -7,8 +8,9 @@ from sklearn.preprocessing import MinMaxScaler
 from ta import trend, momentum
 from tensorflow.python.keras.models import load_model
 
-api_key = 'REMOVED'
-api_secret = 'REMOVED'
+# Market data is public: no API key is needed. If you use one, take it from the environment, never commit it.
+api_key = os.environ.get('BINANCE_API_KEY')
+api_secret = os.environ.get('BINANCE_API_SECRET')
 symbol = 'BTCBUSD'
 interval = Client.KLINE_INTERVAL_1MINUTE
 duration = "365 day"

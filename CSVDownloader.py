@@ -1,3 +1,4 @@
+import os
 import pandas as pd
 from binance.client import Client
 from tqdm import tqdm
@@ -25,8 +26,9 @@ def download_historical_data(api_key, api_secret, symbol, interval, duration, fi
 
 
 # Usage example
-api_key = 'REMOVED'
-api_secret = 'REMOVED'
+# Market data is public: no API key is needed. If you use one, take it from the environment, never commit it.
+api_key = os.environ.get('BINANCE_API_KEY')
+api_secret = os.environ.get('BINANCE_API_SECRET')
 symbol = 'BTCBUSD'
 interval = Client.KLINE_INTERVAL_1MINUTE
 duration = "365 day"

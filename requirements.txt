@@ -1,0 +1,7 @@
+# Runtime of the paper-trading service, every package pinned (the whole dependency tree).
+# Versions: the latest release that was at least 14 days old in November 2026.
+h5py==3.16.0
+numpy==2.5.4
+psycopg==3.3.8
+psycopg-binary==3.3.8
+tzdata==2026.6
