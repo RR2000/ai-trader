@@ -46,6 +46,7 @@ def test_binance_down_is_not_a_crash():
 def test_database_down_is_not_a_crash():
     w = Worker(BrokenStore(), NET, "BTCUSDT", "m.h5", fetch=lambda s, n: fake_candles())
     assert w.tick() is None
+    assert w.last_candle is None  # nothing was recorded
     assert w.last_error == "database unavailable"
     state = build_state(BrokenStore(), w, "7d")
     assert state["status"]["stale"] is True and state["status"]["error"] == "database unavailable"
@@ -58,6 +59,9 @@ def test_tick_records_a_decision_and_the_page_state(store):
     assert step is not None and w.last_error is None
     assert step.price == candles.close[-1]
     assert w.tick() is None  # same candle: nothing new
+    assert w.last_candle == step.ts
+    down = build_state(BrokenStore(), w, "7d")  # database gone: the page still knows the last decision
+    assert down["status"]["stale"] and down["status"]["last_candle"] == step.ts.isoformat().replace("+00:00", "Z")
     now = step.ts + timedelta(seconds=30)
     state = build_state(store, w, "all", now=now)
     assert state["status"]["stale"] is False

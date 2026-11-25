@@ -57,7 +57,7 @@
       box.classList.add("stale");
       const why = st.error ? " · " + st.error : "";
       text.textContent = last ? "Data not updated since " + fullFmt.format(last) + why
-                              : "Waiting for the first decision" + why;
+                              : st.error ? "Data not updated · " + st.error : "Waiting for the first decision";
     } else {
       box.classList.add("live");
       text.textContent = "Live · last decision " + ago(Date.now() - last);
@@ -156,6 +156,9 @@
     svg.replaceChildren();
     const series = (state && state.series) || [];
     $("chart-empty").hidden = series.length > 1 || !state;
+    $("chart-empty").textContent = state && !state.portfolio && state.status.error
+      ? "No data to show right now: " + state.status.error + "."
+      : "No decisions yet: the first one comes within a minute of the service starting.";
     $("tooltip").hidden = true;
     geometry = null;
     if (series.length < 2) return;
@@ -276,7 +279,9 @@
     try {
       const r = await fetch("/api/state?range=" + encodeURIComponent(range), { cache: "no-store" });
       if (!r.ok) throw new Error("HTTP " + r.status);
-      state = await r.json();
+      const next = await r.json();
+      // database down: keep showing the last data received, with the new status
+      state = !next.portfolio && state && state.portfolio && next.status.error ? Object.assign({}, state, { status: next.status }) : next;
       failedSince = null;
     } catch (e) {
       failedSince = failedSince || Date.now(); // keep the last render, say it is old
