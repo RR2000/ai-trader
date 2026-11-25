@@ -1,0 +1,10 @@
+[project]
+name = "automatictraderai"
+version = "1.0.0"
+description = "Live paper trading with a deep Q-network trained in 2023 on Bitcoin candles"
+readme = "README.md"
+requires-python = ">=3.13"
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+filterwarnings = ["ignore::DeprecationWarning", "ignore:.*inplace.*:Warning"]

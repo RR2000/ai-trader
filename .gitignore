@@ -1,1 +1,9 @@
 /src/checkpoint
+/src/model/checkpoint
+/src/data
+__pycache__/
+*.pyc
+.venv/
+venv/
+.idea/
+.pytest_cache/
