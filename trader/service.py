@@ -42,6 +42,7 @@ class Worker:
         self.lock = threading.Lock()
         self.last_error: str | None = None  # short, public text: shown on the page
         self.last_ok_at: datetime | None = None
+        self.last_candle: datetime | None = None  # latest candle recorded, for the page when the database is down
 
     def tick(self):
         try:
@@ -69,6 +70,7 @@ class Worker:
             return None
         with self.lock:
             self.last_error, self.last_ok_at = None, datetime.now(timezone.utc)
+            self.last_candle = utc(data.last_close_time_ms)
         if step is None:
             log.info("candle %s already processed", utc(data.last_close_time_ms).isoformat())
         else:
@@ -100,7 +102,7 @@ def _ms(dt: datetime) -> int:
 def build_state(store: Store, worker: Worker, range_key: str, now: datetime | None = None) -> dict:
     now = now or datetime.now(timezone.utc)
     with worker.lock:
-        error = worker.last_error
+        error, known_candle = worker.last_error, worker.last_candle
     state = {"now": _iso(now), "symbol": worker.symbol, "range": range_key, "actions": list(ACTIONS),
              "model": worker.model_name, "portfolio": None, "series": [], "trades": [], "stats": None}
     since = RANGES[range_key]
@@ -108,7 +110,8 @@ def build_state(store: Store, worker: Worker, range_key: str, now: datetime | No
         snap = store.snapshot(now - since if since else None)
     except Exception as e:  # noqa: BLE001
         log.warning("database read: %s", type(e).__name__)
-        state["status"] = {"stale": True, "error": "database unavailable", "last_candle": None, "updated_at": None}
+        state["status"] = {"stale": True, "error": "database unavailable", "last_candle": _iso(known_candle),
+                           "updated_at": None}
         return state
     p, last = snap["portfolio"], snap.get("last")
     last_candle = p["last_candle"] if p else None
