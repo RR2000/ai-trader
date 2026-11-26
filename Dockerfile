@@ -16,7 +16,7 @@ WORKDIR /app
 COPY requirements.txt .
 RUN pip install --no-deps -r requirements.txt && pip check
 
-COPY src/model/completed/trading_model_episode_30.h5 model/
+COPY src/model/completed/trading_model_episode_30.h5 src/model/mlp/*.npz model/
 COPY simulations.toml .
 COPY trader/ trader/
 

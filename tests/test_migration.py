@@ -7,14 +7,14 @@ from datetime import datetime, timedelta, timezone
 import pytest
 
 import store_v1
-from conftest import MODEL
+from conftest import MODEL, MODEL_DIRS
 from trader.config import load
 from trader.service import ROOT
 from trader.store import LEGACY_SIMULATION, Store
 from trader.strategies import Decision
 
 T0 = datetime(2026, 11, 25, 22, 35, tzinfo=timezone.utc)
-DQN = next(s for s in load(ROOT / "simulations.toml", model_dir=MODEL.parent, networks={}) if s.id == LEGACY_SIMULATION)
+DQN = next(s for s in load(ROOT / "simulations.toml", model_dir=MODEL_DIRS, networks={}) if s.id == LEGACY_SIMULATION)
 
 
 @pytest.fixture

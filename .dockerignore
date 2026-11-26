@@ -3,4 +3,5 @@
 !simulations.toml
 !trader/
 !src/model/completed/trading_model_episode_30.h5
+!src/model/mlp/*.npz
 **/__pycache__
