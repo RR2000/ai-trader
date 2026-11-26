@@ -2,8 +2,7 @@ name: CI
 
 # PR e main: test (inferenza contro Keras, osservazione contro ta/scikit-learn, contabilita', persistenza
 # su un PostgreSQL vero) e build dell'immagine. Solo su main l'immagine va su GitHub Container Registry:
-# :sha-<commit> e :main, con due nomi per la transizione: ghcr.io/rr2000/ai-trader (nuovo, come il repo)
-# e ghcr.io/rr2000/automatictraderai (vecchio).
+# ghcr.io/rr2000/ai-trader, :sha-<commit> e :main.
 on:
   push:
     branches: [main]
@@ -64,8 +63,6 @@ jobs:
           load: ${{ github.event_name != 'push' }}
           push: ${{ github.event_name == 'push' }}
           tags: |
-            ghcr.io/rr2000/automatictraderai:${{ steps.tag.outputs.tag }}
-            ghcr.io/rr2000/automatictraderai:main
             ghcr.io/rr2000/ai-trader:${{ steps.tag.outputs.tag }}
             ghcr.io/rr2000/ai-trader:main
           labels: |
