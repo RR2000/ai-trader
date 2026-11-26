@@ -159,3 +159,50 @@ h2 { font-size: 15px; margin: 0; }
   .trades td, .trades th { padding-left: 4px; padding-right: 4px; }
 }
 @media (prefers-reduced-motion: reduce) { .chart { transition: none; } }
+
+/* every page: the paper-trading notice */
+.notice { margin: 0; padding: 6px 16px; text-align: center; font-size: 13px; background: var(--warn-bg); color: var(--warn-ink); }
+.crumbs { margin: 0 0 12px; font-size: 14px; }
+.visually-hidden { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
+.card-head .fine { margin-top: 2px; max-width: 64ch; }
+.warn { color: var(--warn-ink); }
+
+/* home: the comparison table */
+.sims { width: 100%; border-collapse: collapse; font-size: 14px; }
+.sims th { text-align: left; font-weight: 600; color: var(--ink-2); font-size: 12px; padding: 6px 8px; border-bottom: 1px solid var(--axis); white-space: nowrap; }
+.sims td { padding: 10px 8px; border-bottom: 1px solid var(--grid); vertical-align: middle; }
+.sims tr:last-child td { border-bottom: 0; }
+.sims .num { text-align: right; font-variant-numeric: tabular-nums; white-space: nowrap; }
+.sims th:first-child, .sims td:first-child { padding-left: 0; }
+.sims th:last-child, .sims td:last-child { padding-right: 0; }
+.sims .name a { font-weight: 600; text-decoration: none; }
+.sims .name a:hover, .sims .name a:focus-visible { text-decoration: underline; }
+.sims .meta { display: block; color: var(--ink-2); font-size: 12px; }
+.sims .updated { color: var(--ink-2); white-space: nowrap; font-size: 13px; }
+.sims .spark-col { width: 128px; }
+.spark { display: block; width: 120px; height: 34px; }
+.spark .line { fill: none; stroke-width: 1.5; stroke-linejoin: round; stroke-linecap: round; }
+.spark .line-ai { stroke: var(--ai); }
+.spark .line-bh { stroke: var(--bh); }
+
+/* simulation page: settings */
+.settings { display: grid; grid-template-columns: repeat(auto-fill, minmax(220px, 1fr)); gap: 8px 16px; margin: 12px 0 4px; }
+.settings div { min-width: 0; }
+.settings dt { color: var(--ink-2); font-size: 12px; }
+.settings dd { margin: 0; font-variant-numeric: tabular-nums; overflow-wrap: anywhere; }
+.settings .help { display: block; color: var(--ink-2); font-size: 12px; }
+
+@media (max-width: 760px) {
+  /* the table becomes one card per simulation */
+  .sims thead { display: none; }
+  .sims, .sims tbody, .sims tr { display: block; }
+  .sims tr { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 6px 12px; padding: 12px 0; border-bottom: 1px solid var(--grid); }
+  .sims tr:last-child { border-bottom: 0; }
+  .sims td { display: block; padding: 0 !important; border: 0; text-align: left !important; min-width: 0; }
+  .sims td::before { content: attr(data-label); display: block; color: var(--ink-2); font-size: 12px; }
+  .sims td.name { grid-column: 1 / span 2; }
+  .sims td.name::before, .sims td.spark-col::before { content: none; }
+  .sims td.spark-col { grid-column: 3; grid-row: 1; width: auto; justify-self: end; align-self: center; }
+  .sims .spark { width: 96px; height: 30px; }
+  .sims .updated { white-space: normal; }
+}

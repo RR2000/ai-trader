@@ -48,3 +48,20 @@ def test_gives_up_with_a_market_data_error():
 
     with pytest.raises(MarketDataError):
         fetch_candles("BTCUSDT", 2, attempts=3, sleep=lambda s: None, get_json=get_json)
+
+
+def test_other_intervals():
+    hour = 3_600_000
+    rows = [[NOW - 3 * hour, "1", "1", "1", "100", "2", NOW - 2 * hour - 1], [NOW - 2 * hour, "1", "1", "1", "101", "2", NOW - hour - 1],
+            [NOW - hour, "1", "1", "1", "102", "2", NOW - 1], [NOW, "1", "1", "1", "103", "2", NOW + hour - 1]]
+    urls = []
+
+    def get_json(url, timeout):
+        urls.append(url)
+        return rows
+
+    c = fetch_candles("ETHUSDT", 4, interval="1h", clock=lambda: NOW / 1000, get_json=get_json)
+    assert "interval=1h" in urls[0] and "symbol=ETHUSDT" in urls[0]
+    assert c.close == [100.0, 101.0, 102.0]  # the hour still forming is left out
+    assert c.last_close_time_ms == NOW and c.interval_ms == hour
+    assert c.tail(2).close == [101.0, 102.0] and c.tail(2).last_close_time_ms == NOW

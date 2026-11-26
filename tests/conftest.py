@@ -59,6 +59,16 @@ def store(pg_url):
 
     s = Store(pg_url, connect_timeout=30)  # Windows can take seconds per connection
     with s.connect() as conn:
-        conn.execute("DROP TABLE IF EXISTS portfolio, equity, trades")
+        conn.execute("DROP TABLE IF EXISTS portfolio, equity, trades, schema_migrations, sim_portfolio, sim_equity,"
+                     " sim_trades")
     s.init_schema()
     return s
+
+
+def simulations(text: str):
+    """Simulations from a simulations.toml text, with the real model directory."""
+    import tomllib
+
+    from trader.config import parse
+
+    return parse(tomllib.loads(text), model_dir=MODEL.parent, networks={})

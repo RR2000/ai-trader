@@ -1,4 +1,5 @@
-# Paper-trading service: NumPy inference of the 2023 model, no TensorFlow in the image (329 MB in all, measured in CI).
+# Paper-trading service: the simulations of simulations.toml, NumPy inference of the 2023 model, no TensorFlow in the
+# image (329 MB in all, measured in CI).
 # Python 3.14: 3.15 is out but h5py has no wheels for it yet.
 FROM python:3.14.10-slim
 
@@ -15,6 +16,7 @@ COPY requirements.txt .
 RUN pip install --no-deps -r requirements.txt && pip check
 
 COPY src/model/completed/trading_model_episode_30.h5 model/
+COPY simulations.toml .
 COPY trader/ trader/
 
 USER 10001:10001

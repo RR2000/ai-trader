@@ -1,16 +1,9 @@
 "use strict";
 (() => {
-  const NS = "http://www.w3.org/2000/svg";
-  const REFRESH_MS = 30000;
+  const T = window.Trader, F = T.fmt, el = T.svg;
   const $ = (id) => document.getElementById(id);
-  const usd = new Intl.NumberFormat("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
-  const usd0 = new Intl.NumberFormat("en-US", { maximumFractionDigits: 0 });
-  const btc = new Intl.NumberFormat("en-US", { minimumFractionDigits: 6, maximumFractionDigits: 6 });
-  const pct = new Intl.NumberFormat("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2, signDisplay: "exceptZero" });
-  const signed = new Intl.NumberFormat("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2, signDisplay: "exceptZero" });
-  const timeFmt = new Intl.DateTimeFormat("en-US", { hour: "2-digit", minute: "2-digit", hour12: false });
-  const dayFmt = new Intl.DateTimeFormat("en-US", { month: "short", day: "numeric" });
-  const fullFmt = new Intl.DateTimeFormat("en-US", { month: "short", day: "numeric", hour: "2-digit", minute: "2-digit", hour12: false });
+  const REFRESH_MS = 30000;
+  const simId = decodeURIComponent(location.pathname.replace(/^\/s\//, "").replace(/\/$/, ""));
 
   let range = "7d";
   try { range = localStorage.getItem("range") || range; } catch (e) { /* storage blocked: default */ }
@@ -19,77 +12,83 @@
   let failedSince = null;
   let hoverIndex = null;
   let geometry = null;
+  let described = false;
 
-  function el(tag, attrs, text) {
-    const n = document.createElementNS(NS, tag);
-    for (const k in attrs) n.setAttribute(k, attrs[k]);
-    if (text !== undefined) n.textContent = text;
-    return n;
-  }
-
-  function ago(ms) {
-    const s = Math.max(0, Math.round(ms / 1000));
-    if (s < 60) return s + " s ago";
-    const m = Math.round(s / 60);
-    if (m < 60) return m + " min ago";
-    const h = Math.round(m / 60);
-    return h < 48 ? h + " h ago" : Math.round(h / 24) + " days ago";
-  }
-
-  function setTone(node, x) {
-    node.classList.remove("up", "down");
-    if (x > 0) node.classList.add("up");
-    if (x < 0) node.classList.add("down");
-  }
+  const sim = () => (state && state.simulation) || { base: "BTC", quote: "USDT", interval: "1m" };
 
   function renderStatus() {
-    const box = $("status"), text = $("status-text");
+    const box = $("status");
+    const s = T.statusLine(state && state.status, failedSince);
     box.classList.remove("live", "stale");
-    if (failedSince) {
-      box.classList.add("stale");
-      text.textContent = "Data not updated: the service does not answer";
-      return;
-    }
-    if (!state) return;
-    const st = state.status;
-    const last = st.last_candle ? Date.parse(st.last_candle) : null;
-    if (st.stale) {
-      box.classList.add("stale");
-      const why = st.error ? " · " + st.error : "";
-      text.textContent = last ? "Data not updated since " + fullFmt.format(last) + why
-                              : st.error ? "Data not updated · " + st.error : "Waiting for the first decision";
-    } else {
-      box.classList.add("live");
-      text.textContent = "Live · last decision " + ago(Date.now() - last);
+    if (s.tone) box.classList.add(s.tone);
+    $("status-text").textContent = s.text;
+  }
+
+  function renderDescription() {
+    if (described || !state) return;
+    described = true;
+    const s = state.simulation;
+    document.title = s.name + " · ai-trader";
+    $("sim-name").textContent = s.name;
+    $("sim-sub").textContent = (s.description ? s.description + " " : "") + s.strategy_title + " on " + s.base + "/" + s.quote
+      + ", " + T.candles(s.interval) + ".";
+    $("chart-title").textContent = "Portfolio value, " + s.quote;
+    $("th-qty").textContent = s.base;
+    $("explain").textContent = s.explain;
+    const rows = [["Strategy", s.strategy_title + " (" + s.strategy + ")"], ["Pair", s.base + "/" + s.quote + " (Binance spot)"],
+      ["Candles", T.candles(s.interval)], ["Starting cash", F.money.format(s.start_cash) + " " + s.quote],
+      ["Fee", F.money.format(s.fee * 100) + "% per trade"]];
+    for (const p of s.params) rows.push([p.name, String(p.value), p.help]);
+    const dl = $("settings");
+    dl.replaceChildren();
+    for (const [k, v, help] of rows) {
+      const wrap = document.createElement("div");
+      const dt = document.createElement("dt");
+      dt.textContent = k;
+      const dd = document.createElement("dd");
+      dd.textContent = v;
+      if (help) {
+        const small = document.createElement("span");
+        small.className = "help";
+        small.textContent = help;
+        dd.append(" ", small);
+      }
+      wrap.append(dt, dd);
+      dl.appendChild(wrap);
     }
   }
 
   function renderKpis() {
     const p = state && state.portfolio;
     if (!p) return;
-    const since = dayFmt.format(Date.parse(p.started_at));
-    const aiPct = (p.value / p.start_cash - 1) * 100;
+    const s = sim();
+    const since = F.day.format(Date.parse(p.started_at));
+    const simPct = (p.value / p.start_cash - 1) * 100;
     const bhPct = (p.benchmark / p.start_cash - 1) * 100;
-    $("k-value").textContent = usd.format(p.value);
-    $("k-value-note").textContent = pct.format(aiPct) + "% since " + since;
-    setTone($("k-value-note"), aiPct);
-    $("k-bench").textContent = usd.format(p.benchmark);
-    $("k-bench-note").textContent = pct.format(bhPct) + "% since " + since;
-    setTone($("k-bench-note"), bhPct);
+    $("k-value").textContent = F.money.format(p.value);
+    $("k-value-note").textContent = F.pct.format(simPct) + "% since " + since;
+    T.setTone($("k-value-note"), simPct);
+    $("k-bench").textContent = F.money.format(p.benchmark);
+    $("k-bench-note").textContent = F.pct.format(bhPct) + "% since " + since;
+    T.setTone($("k-bench-note"), bhPct);
     const diff = p.value - p.benchmark;
-    $("k-diff").textContent = signed.format(diff);
-    setTone($("k-diff"), diff);
-    $("k-diff-note").textContent = signed.format(aiPct - bhPct) + " percentage points";
+    $("k-diff").textContent = F.signed.format(diff);
+    T.setTone($("k-diff"), diff);
+    $("k-diff-note").textContent = F.signed.format(simPct - bhPct) + " percentage points";
     $("k-position").textContent = p.position;
-    $("k-position-note").textContent = (p.position === "BTC" ? btc.format(p.crypto) + " BTC" : usd.format(p.cash) + " USDT")
-      + (p.last_action ? " · last call: " + p.last_action : "");
-    const s = state.stats;
-    if (s) {
-      const m = s.last_24h;
-      $("decision-mix").textContent = "Model calls in the last 24 h: " + m.buy + " buy, " + m.sell + " sell, " + m.hold
-        + " hold (a buy while already in BTC, or a sell while in USDT, changes nothing). "
-        + s.decisions + " decisions since " + fullFmt.format(Date.parse(p.started_at)) + ", BTC at " + usd.format(p.price) + " USDT now.";
+    const parts = [];
+    if (p.crypto > 0) parts.push(F.coin.format(p.crypto) + " " + s.base);
+    if (p.cash > 0.005 || p.crypto <= 0) parts.push(F.money.format(p.cash) + " " + s.quote);
+    $("k-position-note").textContent = parts.join(" + ") + (p.last_action ? " · last call: " + p.last_action : "");
+    const st = state.stats;
+    if (st) {
+      const m = st.last_24h;
+      $("decision-mix").textContent = "Calls in the last 24 h: " + m.buy + " buy, " + m.sell + " sell, " + m.hold
+        + " hold (a buy with no cash left, or a sell with nothing to sell, changes nothing). "
+        + st.decisions + (st.decisions === 1 ? " decision" : " decisions") + " since " + F.full.format(Date.parse(p.started_at)) + ", " + s.base + " at "
+        + F.money.format(p.price) + " " + s.quote + " now.";
     }
+    $("last-reason").textContent = p.last_reason ? "Last signal: " + p.last_reason + "." : "";
   }
 
   function renderTrades() {
@@ -99,17 +98,17 @@
     $("trades-empty").hidden = trades.length > 0;
     const s = state && state.stats;
     $("trades-count").textContent = s && s.trades
-      ? s.trades + " in total, " + usd.format(s.fees) + " USDT paid in fees" + (s.trades > trades.length ? " (latest " + trades.length + " shown)" : "")
+      ? s.trades + " in total, " + F.money.format(s.fees) + " " + sim().quote + " paid in fees" + (s.trades > trades.length ? " (latest " + trades.length + " shown)" : "")
       : "";
     for (const t of trades) {
       const tr = document.createElement("tr");
       const cells = [
-        [fullFmt.format(Date.parse(t.ts)), ""],
+        [F.full.format(Date.parse(t.ts)), ""],
         [t.side === "buy" ? "Buy" : "Sell", "side side-" + t.side],
-        [usd0.format(t.price), "num"],
-        [btc.format(t.quantity), "num wide"],
-        [usd.format(t.fee_usdt), "num wide"],
-        [usd.format(t.value_after), "num"],
+        [F.money0.format(t.price), "num"],
+        [F.coin.format(t.quantity), "num wide"],
+        [F.money.format(t.fee_usdt), "num wide"],
+        [F.money.format(t.value_after), "num"],
       ];
       for (const [v, cls] of cells) {
         const td = document.createElement("td");
@@ -158,14 +157,14 @@
     $("chart-empty").hidden = series.length > 1 || !state;
     $("chart-empty").textContent = state && !state.portfolio && state.status.error
       ? "No data to show right now: " + state.status.error + "."
-      : "No decisions yet: the first one comes within a minute of the service starting.";
+      : "No decisions yet: the first one comes when the next " + T.candles(sim().interval).replace(/s$/, "") + " closes.";
     $("tooltip").hidden = true;
     geometry = null;
     if (series.length < 2) return;
     const box = $("chart");
     const W = box.clientWidth, H = box.clientHeight;
     const narrow = W < 520;
-    const m = { l: narrow ? 46 : 56, r: narrow ? 70 : 92, t: 10, b: 24 };
+    const m = { l: narrow ? 46 : 56, r: narrow ? 42 : 92, t: 10, b: 24 };
     svg.setAttribute("viewBox", "0 0 " + W + " " + H);
     const xs = series.map((r) => r[0]);
     let lo = Infinity, hi = -Infinity;
@@ -189,7 +188,7 @@
       const x = X(t);
       if (x < m.l + 16 || x > W - m.r - 16) continue;
       svg.appendChild(el("text", { class: "tick", x, y: H - 6, "text-anchor": "middle" },
-        tt.daily ? dayFmt.format(t) : (new Date(t).getHours() === 0 ? dayFmt.format(t) : timeFmt.format(t))));
+        tt.daily ? F.day.format(t) : (new Date(t).getHours() === 0 ? F.day.format(t) : F.time.format(t))));
     }
     const path = (k) => series.map((r, i) => (i ? "L" : "M") + X(r[0]).toFixed(1) + " " + Y(r[k]).toFixed(1)).join("");
     svg.appendChild(el("path", { class: "line line-bh", d: path(2) }));
@@ -202,7 +201,7 @@
       const mid = (ya + yb) / 2, up = ya <= yb ? -7 : 7;
       ya = mid + up; yb = mid - up;
     }
-    svg.appendChild(el("text", { class: "end-label", x: W - m.r + 8, y: ya + 4 }, "AI"));
+    svg.appendChild(el("text", { class: "end-label", x: W - m.r + 8, y: ya + 4 }, narrow ? "Sim" : "Simulation"));
     svg.appendChild(el("text", { class: "end-label", x: W - m.r + 8, y: yb + 4 }, narrow ? "B&H" : "Buy & hold"));
 
     const hover = el("g", { visibility: "hidden" });
@@ -240,8 +239,8 @@
     const tip = $("tooltip");
     const head = document.createElement("div");
     head.className = "t";
-    head.textContent = fullFmt.format(r[0]) + " · BTC " + usd0.format(r[3]);
-    tip.replaceChildren(head, tipRow("key-ai", usd.format(r[1]), "AI portfolio"), tipRow("key-bh", usd.format(r[2]), "Buy and hold"));
+    head.textContent = F.full.format(r[0]) + " · " + sim().base + " " + F.money0.format(r[3]);
+    tip.replaceChildren(head, tipRow("key-ai", F.money.format(r[1]), "This simulation"), tipRow("key-bh", F.money.format(r[2]), "Buy and hold"));
     tip.hidden = false;
     const w = tip.offsetWidth;
     const left = x + 12 + w > g.W ? x - 12 - w : x + 12;
@@ -268,6 +267,7 @@
   }
 
   function render() {
+    renderDescription();
     renderStatus();
     renderKpis();
     renderChart();
@@ -277,7 +277,7 @@
   async function load() {
     $("chart").classList.add("loading");
     try {
-      const r = await fetch("/api/state?range=" + encodeURIComponent(range), { cache: "no-store" });
+      const r = await fetch("/api/simulations/" + encodeURIComponent(simId) + "?range=" + encodeURIComponent(range), { cache: "no-store" });
       if (!r.ok) throw new Error("HTTP " + r.status);
       const next = await r.json();
       // database down: keep showing the last data received, with the new status
