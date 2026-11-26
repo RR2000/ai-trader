@@ -76,3 +76,5 @@ jobs:
           docker image ls ghcr.io/rr2000/ai-trader:main --format 'dimensione: {{.Size}}'
           docker run --rm --memory 192m ghcr.io/rr2000/ai-trader:main python -c \
             "from trader.model import QNetwork; import numpy as np; n = QNetwork('/app/model/trading_model_episode_30.h5'); print('q', n.q_values(np.full((30, 7), .5)))"
+          docker run --rm --memory 192m ghcr.io/rr2000/ai-trader:main python -c \
+            "from trader.service import load_simulations; print('simulazioni', [s.id for s in load_simulations()])"
