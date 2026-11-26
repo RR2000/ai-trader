@@ -2,7 +2,8 @@ name: CI
 
 # PR e main: test (inferenza contro Keras, osservazione contro ta/scikit-learn, contabilita', persistenza
 # su un PostgreSQL vero) e build dell'immagine. Solo su main l'immagine va su GitHub Container Registry:
-# ghcr.io/rr2000/automatictraderai:sha-<commit> e :main.
+# :sha-<commit> e :main, con due nomi per la transizione: ghcr.io/rr2000/ai-trader (nuovo, come il repo)
+# e ghcr.io/rr2000/automatictraderai (vecchio).
 on:
   push:
     branches: [main]
@@ -65,14 +66,16 @@ jobs:
           tags: |
             ghcr.io/rr2000/automatictraderai:${{ steps.tag.outputs.tag }}
             ghcr.io/rr2000/automatictraderai:main
+            ghcr.io/rr2000/ai-trader:${{ steps.tag.outputs.tag }}
+            ghcr.io/rr2000/ai-trader:main
           labels: |
-            org.opencontainers.image.source=https://github.com/${{ github.repository }}
+            org.opencontainers.image.source=https://github.com/RR2000/ai-trader
             org.opencontainers.image.description=Paper trading with a 2023 deep Q-network on live BTC/USDT prices
           cache-from: type=gha
           cache-to: type=gha,mode=max
       - name: Prova dell'immagine (PR)
         if: github.event_name != 'push'
         run: |
-          docker image ls ghcr.io/rr2000/automatictraderai:main --format 'dimensione: {{.Size}}'
-          docker run --rm --memory 192m ghcr.io/rr2000/automatictraderai:main python -c \
+          docker image ls ghcr.io/rr2000/ai-trader:main --format 'dimensione: {{.Size}}'
+          docker run --rm --memory 192m ghcr.io/rr2000/ai-trader:main python -c \
             "from trader.model import QNetwork; import numpy as np; n = QNetwork('/app/model/trading_model_episode_30.h5'); print('q', n.q_values(np.full((30, 7), .5)))"

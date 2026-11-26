@@ -58,7 +58,7 @@ def parse_klines(rows: list, now_ms: int) -> Candles:
 
 
 def _get_json(url: str, timeout: float):
-    req = urllib.request.Request(url, headers={"User-Agent": "automaticTraderAI-paper-trading", "Accept": "application/json"})
+    req = urllib.request.Request(url, headers={"User-Agent": "ai-trader-paper-trading", "Accept": "application/json"})
     with urllib.request.urlopen(req, timeout=timeout) as resp:
         body = resp.read(4 * 1024 * 1024)
     return json.loads(body)

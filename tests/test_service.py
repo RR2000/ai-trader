@@ -92,7 +92,7 @@ def get(url):
 
 def test_web_server(server):
     status, headers, body = get(server + "/")
-    assert status == 200 and b"automaticTraderAI" in body
+    assert status == 200 and b"ai-trader" in body
     assert "default-src 'self'" in headers["Content-Security-Policy"]
     for path in ("/app.js", "/app.css", "/favicon.svg"):
         assert get(server + path)[0] == 200
