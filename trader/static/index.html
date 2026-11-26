@@ -5,86 +5,55 @@
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <meta name="color-scheme" content="light dark">
   <title>ai-trader · paper trading</title>
-  <meta name="description" content="A deep Q-network trained in 2023 trades a simulated portfolio on live Bitcoin prices, compared with buy and hold.">
+  <meta name="description" content="Paper-trading simulations on live Bitcoin prices: a deep Q-network from 2023 and classic strategies, each compared with buy and hold.">
   <link rel="icon" href="/favicon.svg" type="image/svg+xml">
   <link rel="stylesheet" href="/app.css">
-  <script src="/app.js" defer></script>
+  <script src="/common.js" defer></script>
+  <script src="/home.js" defer></script>
 </head>
 <body>
+  <p class="notice"><strong>Paper trading</strong>: no real money, not financial advice.</p>
   <main>
     <header class="top">
       <div>
         <h1>ai-trader</h1>
-        <p class="sub">A 2023 reinforcement-learning model trading a <strong>simulated</strong> portfolio on live BTC/USDT prices.</p>
+        <p class="sub">Simulated portfolios trading on live Binance prices: a reinforcement-learning model from 2023 and a few classic strategies, side by side.</p>
       </div>
       <p id="status" class="status" role="status" aria-live="polite"><span class="dot" aria-hidden="true"></span><span id="status-text">Loading…</span></p>
     </header>
 
-    <section class="kpis" aria-label="Summary">
-      <div class="kpi">
-        <span class="label"><span class="key key-ai" aria-hidden="true"></span>AI portfolio</span>
-        <span class="value" id="k-value">–</span>
-        <span class="note" id="k-value-note">&nbsp;</span>
-      </div>
-      <div class="kpi">
-        <span class="label"><span class="key key-bh" aria-hidden="true"></span>Buy and hold</span>
-        <span class="value" id="k-bench">–</span>
-        <span class="note" id="k-bench-note">&nbsp;</span>
-      </div>
-      <div class="kpi">
-        <span class="label">AI minus buy and hold</span>
-        <span class="value" id="k-diff">–</span>
-        <span class="note" id="k-diff-note">&nbsp;</span>
-      </div>
-      <div class="kpi">
-        <span class="label">Holding now</span>
-        <span class="value" id="k-position">–</span>
-        <span class="note" id="k-position-note">&nbsp;</span>
-      </div>
-    </section>
-
-    <section class="card" aria-labelledby="chart-title">
+    <section class="card" aria-labelledby="sims-title">
       <div class="card-head">
         <div>
-          <h2 id="chart-title">Portfolio value, USDT</h2>
-          <ul class="legend" aria-label="Legend">
-            <li><span class="key key-ai" aria-hidden="true"></span>AI portfolio</li>
-            <li><span class="key key-bh" aria-hidden="true"></span>Buy and hold from the same start</li>
-          </ul>
+          <h2 id="sims-title">Simulations</h2>
+          <p class="fine">Each one started with its own cash at its own first candle and is compared with buying and holding from that same moment.</p>
         </div>
-        <div class="ranges" role="group" aria-label="Time range">
-          <button type="button" data-range="1d">1D</button>
-          <button type="button" data-range="7d" aria-pressed="true">1W</button>
-          <button type="button" data-range="30d">1M</button>
-          <button type="button" data-range="all">All</button>
-        </div>
+        <ul class="legend" aria-label="Legend of the small charts">
+          <li><span class="key key-ai" aria-hidden="true"></span>Simulation</li>
+          <li><span class="key key-bh" aria-hidden="true"></span>Buy and hold</li>
+        </ul>
       </div>
-      <div class="chart" id="chart">
-        <svg id="chart-svg" role="img" aria-labelledby="chart-title"></svg>
-        <div class="tooltip" id="tooltip" hidden></div>
-        <p class="empty" id="chart-empty" hidden>No decisions yet: the first one comes within a minute of the service starting.</p>
-      </div>
-      <p class="fine" id="decision-mix">&nbsp;</p>
-    </section>
-
-    <section class="card" aria-labelledby="trades-title">
-      <div class="card-head">
-        <h2 id="trades-title">Trades</h2>
-        <span class="fine" id="trades-count"></span>
-      </div>
-      <table class="trades">
+      <table class="sims">
         <thead>
-          <tr><th scope="col">Time</th><th scope="col">Side</th><th scope="col" class="num">Price</th><th scope="col" class="num wide">BTC</th><th scope="col" class="num wide">Fee</th><th scope="col" class="num">Value after</th></tr>
+          <tr>
+            <th scope="col">Simulation</th>
+            <th scope="col" class="num">Value</th>
+            <th scope="col" class="num">Return</th>
+            <th scope="col" class="num">vs buy and hold</th>
+            <th scope="col" class="num">Trades</th>
+            <th scope="col">Updated</th>
+            <th scope="col" class="spark-col"><span class="visually-hidden">Value since the start</span></th>
+          </tr>
         </thead>
-        <tbody id="trades-body"></tbody>
+        <tbody id="sims-body"></tbody>
       </table>
-      <p class="empty" id="trades-empty" hidden>No trades yet.</p>
+      <p class="empty" id="sims-empty" hidden>Loading…</p>
     </section>
 
     <section class="card about" aria-labelledby="about-title">
       <h2 id="about-title">What this is</h2>
-      <p>An experiment from April 2023: a deep Q-network (two LSTM layers) trained with reinforcement learning on one-minute Bitcoin candles to choose <em>buy</em>, <em>sell</em> or <em>hold</em>. It was trained on a very small slice of data, so do not expect it to be clever.</p>
-      <p>Every minute this service reads the latest closed BTC/USDT candles from Binance's public market data, builds the same input the model was trained on (30 minutes of price, volume, SMA&nbsp;10, SMA&nbsp;30, RSI, MACD and its signal, min-max scaled) and applies the model's choice to a pretend portfolio that started with 1,000 USDT: all in or all out, 0.1% fee per trade, no slippage. The comparison line bought BTC with the same 1,000 USDT at the same moment, paying one fee, and never sold.</p>
+      <p>Whenever a candle closes (each simulation has its own candle length, from one minute to one hour), the service reads it from Binance's public market data and lets the simulation decide: buy, sell or hold. The decision is applied to a pretend portfolio with the same accounting for all of them: the fee taken on every trade (0.1% by default), no slippage, everything recorded. Return is the change in value since the simulation started; <em>vs buy and hold</em> is that return minus what buying the coin at the same first candle would have made, in percentage points.</p>
+      <p>The simulations are defined in a file in the repository; open one for its chart, its trades and how it decides.</p>
       <p><strong>No real money is involved and nothing here is financial advice.</strong> Source code: <a href="https://github.com/RR2000/ai-trader">github.com/RR2000/ai-trader</a>.</p>
     </section>
   </main>

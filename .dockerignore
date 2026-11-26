@@ -1,5 +1,6 @@
 *
 !requirements.txt
+!simulations.toml
 !trader/
 !src/model/completed/trading_model_episode_30.h5
 **/__pycache__

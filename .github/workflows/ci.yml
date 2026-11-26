@@ -1,7 +1,7 @@
 name: CI
 
-# PR e main: test (inferenza contro Keras, osservazione contro ta/scikit-learn, contabilita', persistenza
-# su un PostgreSQL vero) e build dell'immagine. Solo su main l'immagine va su GitHub Container Registry:
+# PR e main: test (inferenza contro Keras, osservazione contro ta/scikit-learn, strategie, contabilita', configurazione,
+# persistenza e migrazione su un PostgreSQL vero) e build dell'immagine. Solo su main l'immagine va su GitHub Container Registry:
 # ghcr.io/rr2000/ai-trader, :sha-<commit> e :main.
 on:
   push:
@@ -67,7 +67,7 @@ jobs:
             ghcr.io/rr2000/ai-trader:main
           labels: |
             org.opencontainers.image.source=https://github.com/RR2000/ai-trader
-            org.opencontainers.image.description=Paper trading with a 2023 deep Q-network on live BTC/USDT prices
+            org.opencontainers.image.description=Paper-trading simulations (a 2023 deep Q-network and classic strategies) on live Binance prices
           cache-from: type=gha
           cache-to: type=gha,mode=max
       - name: Prova dell'immagine (PR)

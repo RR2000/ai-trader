@@ -46,3 +46,21 @@ def test_buy_and_hold_pays_one_fee():
 def test_bad_price_is_refused():
     with pytest.raises(ValueError):
         apply(Portfolio(1000.0, 0.0), 0, 0.0)
+
+
+def test_fixed_size_buy_spends_that_amount_and_pays_the_fee_in_btc():
+    p = Portfolio(1000.0, 0.0)
+    t = apply(p, 0, 50_000.0, amount=25.0)
+    assert p.cash == 975.0
+    assert p.crypto == pytest.approx(25 / 50_000 * (1 - FEE)) and t.quantity == p.crypto
+    assert t.fee_usdt == pytest.approx(0.025)
+    apply(p, 0, 40_000.0, amount=25.0)  # a second one adds to the position
+    assert p.cash == 950.0 and p.crypto == pytest.approx((25 / 50_000 + 25 / 40_000) * (1 - FEE))
+
+
+def test_fixed_size_buy_larger_than_the_cash_spends_what_is_left():
+    p = Portfolio(10.0, 0.5)
+    t = apply(p, 0, 50_000.0, amount=25.0)
+    assert p.cash == 0.0 and t.fee_usdt == pytest.approx(0.01)
+    assert apply(p, 0, 50_000.0, amount=25.0) is None  # nothing left
+    assert apply(Portfolio(1e-9, 0.0), 0, 50_000.0, amount=25.0) is None  # dust is not traded
