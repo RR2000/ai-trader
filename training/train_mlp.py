@@ -36,7 +36,7 @@ import numpy as np
 ROOT = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(ROOT))
 
-from trader import mlfeatures  # noqa: E402
+from trader import metrics, mlfeatures  # noqa: E402
 from trader.market import Candles  # noqa: E402
 from trader.portfolio import Portfolio, apply, buy_and_hold_units  # noqa: E402
 from trader.strategies import Position, build  # noqa: E402
@@ -162,8 +162,14 @@ def summary(values, t_idx, t, trades, fees, start_cash=1000.0):
         by_year[str(y)] = round((values[b] / prev - 1) * 100, 1)
         prev = values[b]
     peak = np.maximum.accumulate(values)
+    # the same statistics as the live pages (trader/metrics.py), on the value at the close of every hour
+    risk = metrics.of_series(t[np.asarray(t_idx)] + HOUR, values, HOUR, start_value=start_cash)
+    low = datetime.fromtimestamp(risk["max_drawdown_at"] / 1000, tz=timezone.utc) if risk["max_drawdown_at"] else None
     return {"final": round(float(values[-1]), 2), "return_pct": round((values[-1] / start_cash - 1) * 100, 1),
-            "max_drawdown_pct": round(float(((values - peak) / peak).min() * 100), 1), "trades": trades,
+            "max_drawdown_pct": round(float(((values - peak) / peak).min() * 100), 1),
+            "max_drawdown_low": f"{low:%Y-%m-%d}" if low else None,
+            "volatility_pct": round(risk["volatility"] * 100, 1),
+            "sharpe": round(risk["sharpe"], 2) if risk["sharpe"] is not None else None, "trades": trades,
             "fees": round(fees, 2), "by_year": by_year}
 
 
@@ -224,10 +230,13 @@ def main():
     }
     (Path(__file__).parent / "results.json").write_text(json.dumps(out, indent=2) + "\n", encoding="utf-8")
 
-    print("\n| strategy | return | max drawdown | trades | fees | " + " | ".join(results["buy-and-hold"]["by_year"]) + " |")
-    print("|---|---:|---:|---:|---:|" + "---:|" * len(results["buy-and-hold"]["by_year"]))
+    print("\n| strategy | return | max drawdown | volatility | Sharpe | trades | fees | "
+          + " | ".join(results["buy-and-hold"]["by_year"]) + " |")
+    print("|---|---:|---:|---:|---:|---:|---:|" + "---:|" * len(results["buy-and-hold"]["by_year"]))
     for name, r in results.items():
-        print(f"| {name} | {r['return_pct']:+.1f}% | {r['max_drawdown_pct']:.1f}% | {r['trades']} | {r['fees']:,.0f} | "
+        sharpe = "-" if r["sharpe"] is None else f"{r['sharpe']:.2f}"
+        print(f"| {name} | {r['return_pct']:+.1f}% | {r['max_drawdown_pct']:.1f}% ({r['max_drawdown_low']}) | "
+              f"{r['volatility_pct']:.1f}% | {sharpe} | {r['trades']} | {r['fees']:,.0f} | "
               + " | ".join(f"{v:+.1f}%" for v in r["by_year"].values()) + " |")
 
     # the model that runs live: everything up to the last complete month

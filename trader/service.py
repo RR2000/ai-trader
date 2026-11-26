@@ -24,6 +24,7 @@ from pathlib import Path
 from urllib.parse import parse_qs, urlparse
 
 from . import config as config_mod
+from . import metrics
 from .config import Simulation
 from .market import MAX_LIMIT, fetch_candles
 from .store import LEGACY_SIMULATION, ConfigChanged, Store, StrategyFailed, utc
@@ -36,6 +37,7 @@ STATIC = Path(__file__).parent / "static"
 STALE_GRACE = timedelta(minutes=2)  # a simulation is stale when its next candle is this late (3 min for 1m candles)
 RANGES = {"1d": timedelta(days=1), "7d": timedelta(days=7), "30d": timedelta(days=30), "all": None}
 CACHE_SECONDS = 15
+RISK_SECONDS = 300  # the risk statistics read the whole history: once every five minutes is plenty
 
 
 @dataclass
@@ -177,12 +179,40 @@ def _position(sim: Simulation, p: dict) -> str:
     return sim.base if p["crypto"] > 0 else sim.quote
 
 
-def build_state(store: Store, worker: Worker, sim_id: str, range_key: str, now: datetime | None = None) -> dict:
+def build_risk(store: Store, sim: Simulation) -> dict | None:
+    """Volatility, maximum drawdown and Sharpe ratio of the simulation and of its buy and hold, over the whole
+    history (trader/metrics.py). None before the first decision or when the database cannot answer."""
+    try:
+        r = store.risk(sim.id)
+    except Exception as e:  # noqa: BLE001
+        log.warning("database read (risk): %s", type(e).__name__)
+        return None
+    if r is None:
+        return None
+    span = (_ms(r["last_ts"]) - _ms(r["started_at"]) + sim.interval_ms) if r["last_ts"] else 0
+    out = {}
+    for key, k in (("strategy", "v"), ("buy_and_hold", "b")):
+        m = metrics.finish(r["n"], r[f"mean_{k}"], r[f"std_{k}"], r[f"low_{k}"], r[f"low_{k}_at"], span,
+                           sim.interval_ms)
+        m["max_drawdown_at"] = _iso(m["max_drawdown_at"])
+        out[key] = m
+    return out
+
+
+def _risk(store: Store, sim: Simulation, risk_cache: Cache | None):
+    if risk_cache is None:
+        return build_risk(store, sim)
+    return risk_cache.get(sim.id, lambda: build_risk(store, sim))
+
+
+def build_state(store: Store, worker: Worker, sim_id: str, range_key: str, now: datetime | None = None,
+                risk_cache: Cache | None = None) -> dict:
     now = now or datetime.now(timezone.utc)
     st = worker.status[sim_id]
     sim = st.sim
     state = {"now": _iso(now), "simulation": describe(sim), "symbol": sim.symbol, "range": range_key,
-             "actions": list(ACTIONS), "portfolio": None, "series": [], "trades": [], "stats": None}
+             "actions": list(ACTIONS), "portfolio": None, "series": [], "trades": [], "stats": None, "risk": None,
+             "risk_rules": RISK_RULES}
     since = RANGES[range_key]
     try:
         snap = store.snapshot(sim_id, now - since if since else None)
@@ -214,10 +244,11 @@ def build_state(store: Store, worker: Worker, sim_id: str, range_key: str, now: 
     s = snap["stats"]
     state["stats"] = {"trades": s["trades"], "fees": s["fees"], "decisions": s["decisions"],
                       "last_24h": {"buy": s["buy_24h"], "sell": s["sell_24h"], "hold": s["hold_24h"]}}
+    state["risk"] = _risk(store, sim, risk_cache)
     return state
 
 
-def build_summary(store: Store, worker: Worker, now: datetime | None = None) -> dict:
+def build_summary(store: Store, worker: Worker, now: datetime | None = None, risk_cache: Cache | None = None) -> dict:
     now = now or datetime.now(timezone.utc)
     try:
         rows = store.summary([s.id for s in worker.sims])
@@ -243,8 +274,13 @@ def build_summary(store: Store, worker: Worker, now: datetime | None = None) -> 
                 "position": _position(sim, r), "trades": r["trades"],
                 "spark": [first] + [[_ms(x["ts"]), round(x["value"], 4), round(x["benchmark"], 4)] for x in r["spark"]],
             }
+            item["risk"] = _risk(store, sim, risk_cache)
         out.append(item)
-    return {"now": _iso(now), "error": error, "simulations": out}
+    return {"now": _iso(now), "error": error, "simulations": out, "risk_rules": RISK_RULES}
+
+
+RISK_RULES = {"min_days": metrics.MIN_DAYS, "min_candles": metrics.MIN_RETURNS, "days_per_year": 365,
+              "risk_free_rate": 0}
 
 
 class Cache:
@@ -272,7 +308,8 @@ SIM_PATH = re.compile(r"^/s/([a-z0-9-]{1,40})/?$")
 API_SIM_PATH = re.compile(r"^/api/simulations/([a-z0-9-]{1,40})$")
 
 
-def make_handler(store: Store, worker: Worker, cache: Cache):
+def make_handler(store: Store, worker: Worker, cache: Cache, risk_cache: Cache | None = None):
+    risk_cache = risk_cache or Cache(RISK_SECONDS)
     files = {"/": "index.html", "/index.html": "index.html", "/app.css": "app.css", "/common.js": "common.js",
              "/home.js": "home.js", "/sim.js": "sim.js", "/favicon.svg": "favicon.svg"}
 
@@ -308,7 +345,7 @@ def make_handler(store: Store, worker: Worker, cache: Cache):
             key = parse_qs(query).get("range", ["7d"])[0]
             if key not in RANGES:
                 return self._json(400, {"error": "range must be one of " + ", ".join(RANGES)})
-            return self._json(200, cache.get((sim_id, key), lambda: build_state(store, worker, sim_id, key)))
+            return self._json(200, cache.get((sim_id, key), lambda: build_state(store, worker, sim_id, key, risk_cache=risk_cache)))
 
         def do_HEAD(self):
             self.do_GET()
@@ -316,7 +353,7 @@ def make_handler(store: Store, worker: Worker, cache: Cache):
         def do_GET(self):
             url = urlparse(self.path)
             if url.path == "/api/simulations":
-                return self._json(200, cache.get("summary", lambda: build_summary(store, worker)))
+                return self._json(200, cache.get("summary", lambda: build_summary(store, worker, risk_cache=risk_cache)))
             m = API_SIM_PATH.match(url.path)
             if m:
                 if m.group(1) not in worker.status:

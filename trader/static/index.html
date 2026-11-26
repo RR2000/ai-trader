@@ -13,7 +13,7 @@
 </head>
 <body>
   <p class="notice"><strong>Paper trading</strong>: no real money, not financial advice.</p>
-  <main>
+  <main class="wide">
     <header class="top">
       <div>
         <h1>ai-trader</h1>
@@ -40,6 +40,9 @@
             <th scope="col" class="num">Value</th>
             <th scope="col" class="num">Return</th>
             <th scope="col" class="num">vs buy and hold</th>
+            <th scope="col" class="num" title="Annualized, since the start">Volatility</th>
+            <th scope="col" class="num" title="Largest fall from a peak, since the start">Max drawdown</th>
+            <th scope="col" class="num" title="Annualized mean return over volatility, risk-free rate 0">Sharpe</th>
             <th scope="col" class="num">Trades</th>
             <th scope="col">Updated</th>
             <th scope="col" class="spark-col"><span class="visually-hidden">Value since the start</span></th>
@@ -48,6 +51,7 @@
         <tbody id="sims-body"></tbody>
       </table>
       <p class="empty" id="sims-empty" hidden>Loading…</p>
+      <p class="fine formula">Since each start, from the value at every candle: volatility = standard deviation of the returns per candle × √(candles in 365 days); Sharpe = their mean × candles in 365 days ÷ volatility, risk-free rate 0; max drawdown = largest fall from a peak, with the day of the low. Shown after 7 days and 30 candles; B&amp;H is the same for buy and hold.</p>
     </section>
 
     <section class="card about" aria-labelledby="about-title">

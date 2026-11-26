@@ -1,6 +1,6 @@
 "use strict";
 (() => {
-  const T = window.Trader, F = T.fmt;
+  const T = window.Trader, F = T.fmt, R = T.risk;
   const $ = (id) => document.getElementById(id);
   const REFRESH_MS = 30000;
   let data = null;
@@ -29,6 +29,31 @@
     svg.appendChild(T.svg("path", { class: "line line-bh", d: line(2) }));
     svg.appendChild(T.svg("path", { class: "line line-ai", d: line(1) }));
     return svg;
+  }
+
+  function withNote(text, note) {
+    const wrap = document.createElement("span");
+    const meta = document.createElement("span");
+    meta.className = "meta";
+    meta.textContent = note;
+    wrap.append(text, meta);
+    return wrap;
+  }
+
+  // volatility, max drawdown and Sharpe, with buy and hold's below; one cell while there is too little history
+  function riskCells(tr, risk, rules) {
+    const m = risk && risk.strategy, b = risk && risk.buy_and_hold;
+    if (!m || !m.enough) {
+      const td = cell(tr, "Risk", "risk-wait", m ? "not enough data yet" : "–");
+      td.colSpan = 3;
+      if (m && rules) td.title = R.rule(rules);
+      return;
+    }
+    const bh = (f) => (b && b.enough ? "B&H " + f(b) : "");
+    cell(tr, "Volatility", "num", withNote(R.volatility(m), bh(R.volatility)));
+    const dd = cell(tr, "Max drawdown", "num", withNote(R.drawdown(m), R.low(m)));
+    if (b && b.enough) dd.title = "Buy and hold: " + R.drawdown(b) + ", " + R.low(b);
+    cell(tr, "Sharpe", "num", withNote(R.sharpe(m), bh(R.sharpe)));
   }
 
   function updated(status) {
@@ -85,11 +110,13 @@
         cell(tr, "Value", "num", F.money.format(p.value) + " " + s.quote);
         T.setTone(cell(tr, "Return", "num", F.pct.format(ret) + "%"), ret);
         T.setTone(cell(tr, "vs buy and hold", "num", F.signed.format(vs) + " pp"), vs);
+        riskCells(tr, s.risk, data.risk_rules);
         cell(tr, "Trades", "num", String(p.trades));
       } else {
         cell(tr, "Value", "num", "–");
         cell(tr, "Return", "num", "–");
         cell(tr, "vs buy and hold", "num", "–");
+        riskCells(tr, null, data.risk_rules);
         cell(tr, "Trades", "num", "–");
       }
       cell(tr, "Updated", "updated", updated(s.status));

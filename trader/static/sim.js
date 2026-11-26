@@ -91,6 +91,49 @@
     $("last-reason").textContent = p.last_reason ? "Last signal: " + p.last_reason + "." : "";
   }
 
+  function renderRisk() {
+    const R = T.risk, risk = state && state.risk, rules = state && state.risk_rules;
+    const m = risk && risk.strategy, b = risk && risk.buy_and_hold;
+    $("risk-rule").textContent = rules ? R.rule(rules) : "";
+    const ready = !!(m && m.enough);
+    $("risk-table").hidden = !ready;
+    $("risk-empty").hidden = ready;
+    if (!ready) {
+      $("risk-empty").textContent = !state ? "Loading…" : !m ? "No decisions yet."
+        : "Not enough data yet: " + m.days.toFixed(1) + " of " + rules.min_days + " days, "
+          + m.returns + " of at least " + rules.min_candles + " candles.";
+      return;
+    }
+    const both = (f, note) => [m, b && b.enough ? b : null].map((x) => (x ? [f(x), note ? note(x) : ""] : ["–", ""]));
+    const rows = [
+      ["Volatility, annualized", both(R.volatility)],
+      ["Max drawdown", both(R.drawdown, R.low)],
+      ["Sharpe ratio", both(R.sharpe)],
+    ];
+    const body = $("risk-body");
+    body.replaceChildren();
+    for (const [label, values] of rows) {
+      const tr = document.createElement("tr");
+      const th = document.createElement("th");
+      th.scope = "row";
+      th.textContent = label;
+      tr.appendChild(th);
+      for (const [v, note] of values) {
+        const td = document.createElement("td");
+        td.className = "num";
+        td.textContent = v;
+        if (note) {
+          const small = document.createElement("span");
+          small.className = "meta";
+          small.textContent = note;
+          td.appendChild(small);
+        }
+        tr.appendChild(td);
+      }
+      body.appendChild(tr);
+    }
+  }
+
   function renderTrades() {
     const body = $("trades-body");
     body.replaceChildren();
@@ -271,6 +314,7 @@
     renderStatus();
     renderKpis();
     renderChart();
+    renderRisk();
     renderTrades();
   }
 

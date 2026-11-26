@@ -10,6 +10,9 @@ window.Trader = (() => {
   const time = new Intl.DateTimeFormat("en-US", { hour: "2-digit", minute: "2-digit", hour12: false });
   const day = new Intl.DateTimeFormat("en-US", { month: "short", day: "numeric" });
   const full = new Intl.DateTimeFormat("en-US", { month: "short", day: "numeric", hour: "2-digit", minute: "2-digit", hour12: false });
+  const date = new Intl.DateTimeFormat("en-US", { year: "numeric", month: "short", day: "numeric" });
+  const pct1 = new Intl.NumberFormat("en-US", { minimumFractionDigits: 1, maximumFractionDigits: 1 });
+  const ratio = new Intl.NumberFormat("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
   const INTERVAL_WORDS = { m: "minute", h: "hour", d: "day" };
 
   function svg(tag, attrs, text) {
@@ -55,5 +58,14 @@ window.Trader = (() => {
     return { tone: "live", text: "Live · last decision " + ago(Date.now() - last) };
   }
 
-  return { svg, ago, setTone, candles, statusLine, fmt: { money, money0, coin, pct, signed, time, day, full } };
+  // the risk statistics of /api (trader/metrics.py): text for the volatility, the drawdown and its day, the Sharpe ratio
+  const risk = {
+    volatility: (m) => pct1.format(m.volatility * 100) + "%",
+    drawdown: (m) => (m.max_drawdown < 0 ? "−" + pct1.format(-m.max_drawdown * 100) : "0.0") + "%",
+    low: (m) => (m.max_drawdown_at ? "low " + date.format(Date.parse(m.max_drawdown_at)) : "no fall yet"),
+    sharpe: (m) => (m.sharpe === null ? "–" : (m.sharpe < 0 ? "−" : "") + ratio.format(Math.abs(m.sharpe))),
+    rule: (r) => "Shown after " + r.min_days + " days and " + r.min_candles + " candles.",
+  };
+
+  return { svg, ago, setTone, candles, statusLine, risk, fmt: { money, money0, coin, pct, signed, time, day, full, date } };
 })();
