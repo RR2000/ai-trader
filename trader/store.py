@@ -209,6 +209,29 @@ class Store:
                 {"s": sim_id, "t": end - timedelta(hours=24)}).fetchone()
             return {"portfolio": portfolio, "last": last, "series": series, "trades": trades, "stats": stats}
 
+    def risk(self, sim_id: str) -> dict | None:
+        """The sums behind the risk statistics of trader/metrics.py, over the whole history, for the simulation
+        (v) and its buy and hold (b): returns per candle, the first from the starting cash, and falls from the
+        running peak, the starting cash being the first peak. None before the first decision."""
+        with self.connect() as conn:
+            p = conn.execute("SELECT started_at, start_cash FROM sim_portfolio WHERE simulation = %s",
+                             (sim_id,)).fetchone()
+            if p is None:
+                return None
+            row = conn.execute(
+                "WITH s AS (SELECT ts,"
+                " value / nullif(lag(value, 1, %(c)s) OVER w, 0) - 1 AS rv,"
+                " benchmark / nullif(lag(benchmark, 1, %(c)s) OVER w, 0) - 1 AS rb,"
+                " value / nullif(greatest(%(c)s, max(value) OVER w), 0) - 1 AS fv,"
+                " benchmark / nullif(greatest(%(c)s, max(benchmark) OVER w), 0) - 1 AS fb"
+                " FROM sim_equity WHERE simulation = %(s)s WINDOW w AS (ORDER BY ts))"
+                " SELECT count(*) AS n, max(ts) AS last_ts, avg(rv) AS mean_v, stddev_samp(rv) AS std_v,"
+                " avg(rb) AS mean_b, stddev_samp(rb) AS std_b, min(fv) AS low_v, min(fb) AS low_b,"
+                " (SELECT ts FROM s ORDER BY fv, ts LIMIT 1) AS low_v_at,"
+                " (SELECT ts FROM s ORDER BY fb, ts LIMIT 1) AS low_b_at FROM s",
+                {"s": sim_id, "c": p["start_cash"]}).fetchone()
+            return {**row, "started_at": p["started_at"]}
+
     def summary(self, sim_ids: list[str]) -> dict[str, dict]:
         """For the home page: every simulation's portfolio, latest point, trade count and a small series."""
         with self.connect() as conn:

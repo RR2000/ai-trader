@@ -146,3 +146,37 @@ def test_series_is_downsampled_and_keeps_the_latest_point(store):
 def test_empty_database(store):
     assert store.snapshot("a", None)["portfolio"] is None
     assert store.summary(["a"]) == {}
+
+
+def test_risk_statistics_in_the_database_match_the_formulas(store):
+    import numpy as np
+
+    from trader.metrics import of_series
+    from trader.service import build_risk
+
+    rec(store, 0, 50_000.0, BUY)
+    assert build_risk(store, A)["strategy"]["enough"] is False  # one candle: not enough data yet
+    rng = np.random.default_rng(7)
+    n = 8 * 24 * 60  # eight days of one-minute candles
+    value = 999.0 * np.exp(np.cumsum(rng.normal(0, 0.001, n)))
+    bench = 999.0 * np.exp(np.cumsum(rng.normal(0, 0.0015, n)))
+    with store.connect() as conn, conn.transaction():
+        conn.execute(
+            "INSERT INTO sim_equity (simulation, ts, price, value, benchmark, action)"
+            " SELECT 'a', %s + make_interval(mins => g::int), 50000, v, b, 2"
+            " FROM unnest(%s::int[], %s::float8[], %s::float8[]) AS u(g, v, b)",
+            (T0, list(range(1, n + 1)), value.tolist(), bench.tolist()))
+        conn.execute("INSERT INTO sim_equity (simulation, ts, price, value, benchmark, action)"
+                     " VALUES ('b', %s, 1, 1, 1, 2)", (T0 + timedelta(minutes=5),))  # another simulation: not mixed in
+        rows = conn.execute("SELECT ts, value, benchmark FROM sim_equity WHERE simulation = 'a' ORDER BY ts").fetchall()
+    ts = [int(r["ts"].timestamp() * 1000) for r in rows]
+    risk = build_risk(store, A)
+    for key, column in (("strategy", "value"), ("buy_and_hold", "benchmark")):
+        expected = of_series(ts, [r[column] for r in rows], A.interval_ms, start_value=A.start_cash)
+        got = risk[key]
+        assert got["enough"] is True and got["returns"] == expected["returns"] == n + 1
+        for k in ("volatility", "annual_return", "sharpe", "max_drawdown"):
+            assert got[k] == pytest.approx(expected[k], rel=1e-9), (key, k)
+        low = datetime.fromtimestamp(expected["max_drawdown_at"] / 1000, tz=timezone.utc)
+        assert got["max_drawdown_at"] == low.isoformat().replace("+00:00", "Z")
+    assert build_risk(store, B) is None  # no portfolio yet

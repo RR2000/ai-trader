@@ -153,6 +153,10 @@ def test_tick_records_a_decision_and_the_page_state(store):
     assert [s["id"] for s in summary["simulations"]] == ["dqn-2023", "hold", "sma"]  # the order of the file
     assert rows["hold"]["portfolio"]["trades"] == 1 and rows["hold"]["portfolio"]["position"] == "BTC"
     assert rows["hold"]["portfolio"]["value"] == pytest.approx(rows["hold"]["portfolio"]["benchmark"])
+    # one candle: the risk statistics wait for more history, and say how much there is
+    assert rows["hold"]["risk"]["strategy"] == {**rows["hold"]["risk"]["strategy"], "enough": False, "returns": 1,
+                                                 "volatility": None, "sharpe": None, "max_drawdown": None}
+    assert state["risk"]["buy_and_hold"]["enough"] is False and state["risk_rules"]["min_days"] == 7
 
 
 @pytest.fixture

@@ -101,14 +101,18 @@ A second attempt at an AI, done more carefully than in 2023, and tested before g
 
 Results, January 2021 to October 2026 (`training/results.json`):
 
-| strategy | return | max drawdown | trades | fees (USDT) | 2021 | 2022 | 2023 | 2024 | 2025 | 2026 |
-|---|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|
-| network (walk-forward) | -59.5% | -78.7% | 2005 | 1,746 | +0.8% | -52.6% | +73.0% | +7.7% | -34.6% | -30.4% |
-| buy and hold | +167.3% | -77.2% | 1 | 1 | +59.2% | -64.2% | +155.6% | +121.3% | -6.3% | -11.5% |
-| SMA crossover 20/50 | -39.5% | -65.9% | 1214 | 1,056 | -1.0% | -43.2% | +59.5% | +28.8% | -45.7% | -3.6% |
-| RSI 14 30/70 | -63.7% | -78.6% | 375 | 194 | -16.9% | -60.0% | +11.8% | +1.1% | +11.8% | -13.5% |
-| Bollinger 20/2 | -57.0% | -72.6% | 1223 | 941 | +9.9% | -48.5% | +12.9% | +21.9% | -13.9% | -35.8% |
-| DCA 25 USDT a day | +121.7% | -77.2% | 40 | 1 | +32.1% | -64.2% | +155.6% | +121.3% | -6.3% | -11.5% |
+| strategy | return | max drawdown (low) | volatility | Sharpe | trades | fees (USDT) | 2021 | 2022 | 2023 | 2024 | 2025 | 2026 |
+|---|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|
+| network (walk-forward) | -59.5% | -78.7% (2026-07-28) | 48.3% | -0.08 | 2005 | 1,746 | +0.8% | -52.6% | +73.0% | +7.7% | -34.6% | -30.4% |
+| buy and hold | +167.3% | -77.2% (2022-11-21) | 57.8% | 0.58 | 1 | 1 | +59.2% | -64.2% | +155.6% | +121.3% | -6.3% | -11.5% |
+| SMA crossover 20/50 | -39.5% | -65.9% (2022-06-20) | 38.7% | -0.03 | 1214 | 1,056 | -1.0% | -43.2% | +59.5% | +28.8% | -45.7% | -3.6% |
+| RSI 14 30/70 | -63.7% | -78.6% (2026-02-06) | 44.2% | -0.17 | 375 | 194 | -16.9% | -60.0% | +11.8% | +1.1% | +11.8% | -13.5% |
+| Bollinger 20/2 | -57.0% | -72.6% (2026-06-25) | 43.7% | -0.11 | 1223 | 941 | +9.9% | -48.5% | +12.9% | +21.9% | -13.9% | -35.8% |
+| DCA 25 USDT a day | +121.7% | -77.2% (2022-11-21) | 56.0% | 0.52 | 40 | 1 | +32.1% | -64.2% | +155.6% | +121.3% | -6.3% | -11.5% |
+
+Volatility, max drawdown and Sharpe are computed as on the live pages (see [Risk statistics](#risk-statistics)),
+here on the value at the close of every hour. The Sharpe ratio uses the mean hourly return, which is higher than
+the compound one when the value swings a lot: that is why a strategy that lost 40% can still be near zero.
 
 **It loses.** Its 24-hour calls were right 51.7% of the time, against 51.3% for "always up": no real edge, and
 about 2,000 trades paid 1,746 USDT in fees on a 1,000 USDT portfolio. None of the active strategies beat buy and
@@ -169,6 +173,21 @@ under `dqn-2023` (see *Database* below).
   file with h5py and runs the forward pass in NumPy. The tests check it against Keras (TensorFlow 2.21 reference
   outputs, plus Keras 3 with the JAX backend in CI) and the observation against `ta`, pandas and scikit-learn,
   the libraries the model was trained with.
+
+### Risk statistics
+
+The home page and the page of every simulation show, for the simulation and for its buy and hold from the same
+first candle, over the whole history (`trader/metrics.py`, the same code for the walk-forward test above):
+
+- **volatility**, annualized: the sample standard deviation of the returns per candle (`value / previous value - 1`,
+  the first one from the starting cash) times the square root of the candles in a year of 365 days (525,600 for
+  one-minute candles, 8,760 for hourly ones);
+- **max drawdown**: the largest fall from a previous peak (the starting cash counts as one), with the day of the low;
+- **Sharpe ratio**: the mean return per candle times the candles in a year, divided by the volatility; risk-free
+  rate 0. With no volatility at all (a simulation that never bought) there is none.
+
+Before 7 days of history and 30 candles the pages say "not enough data yet". The database computes the sums in
+one query (window functions over `sim_equity`), read at most every five minutes per simulation.
 
 ### Database
 

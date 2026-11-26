@@ -71,6 +71,20 @@
       <p class="fine" id="last-reason"></p>
     </section>
 
+    <section class="card" aria-labelledby="risk-title">
+      <div class="card-head">
+        <h2 id="risk-title">Risk since the start</h2>
+      </div>
+      <table class="risk" id="risk-table" hidden>
+        <thead>
+          <tr><th scope="col"><span class="visually-hidden">Statistic</span></th><th scope="col" class="num"><span class="key key-ai" aria-hidden="true"></span> This simulation</th><th scope="col" class="num"><span class="key key-bh" aria-hidden="true"></span> Buy and hold</th></tr>
+        </thead>
+        <tbody id="risk-body"></tbody>
+      </table>
+      <p class="empty" id="risk-empty">–</p>
+      <p class="fine formula">Volatility: standard deviation of the returns per candle × √(candles in 365 days). Sharpe ratio: their mean × candles in 365 days ÷ volatility, risk-free rate 0. Max drawdown: largest fall from a peak, with the day of the low. <span id="risk-rule"></span></p>
+    </section>
+
     <section class="card" aria-labelledby="trades-title">
       <div class="card-head">
         <h2 id="trades-title">Trades</h2>

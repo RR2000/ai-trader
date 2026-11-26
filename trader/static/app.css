@@ -73,6 +73,7 @@ body {
   font: 15px/1.5 system-ui, -apple-system, "Segoe UI", sans-serif;
 }
 main { max-width: 1040px; margin: 0 auto; padding: 24px 16px 48px; }
+main.wide { max-width: 1200px; }  /* home: the comparison table has ten columns */
 a { color: var(--link); }
 h1 { font-size: 22px; margin: 0; letter-spacing: -0.01em; }
 h2 { font-size: 15px; margin: 0; }
@@ -175,6 +176,7 @@ h2 { font-size: 15px; margin: 0; }
 .sims .num { text-align: right; font-variant-numeric: tabular-nums; white-space: nowrap; }
 .sims th:first-child, .sims td:first-child { padding-left: 0; }
 .sims th:last-child, .sims td:last-child { padding-right: 0; }
+.sims td.name { min-width: 170px; }
 .sims .name a { font-weight: 600; text-decoration: none; }
 .sims .name a:hover, .sims .name a:focus-visible { text-decoration: underline; }
 .sims .meta { display: block; color: var(--ink-2); font-size: 12px; }
@@ -185,6 +187,21 @@ h2 { font-size: 15px; margin: 0; }
 .spark .line-ai { stroke: var(--ai); }
 .spark .line-bh { stroke: var(--bh); }
 
+.sims .risk-wait { color: var(--ink-2); font-size: 13px; text-align: center; white-space: nowrap; }
+.formula { max-width: none; }
+
+/* simulation page: risk */
+.risk { width: 100%; border-collapse: collapse; font-size: 14px; }
+.risk th, .risk td { padding: 7px 8px; border-bottom: 1px solid var(--grid); text-align: left; }
+.risk thead th { font-weight: 600; color: var(--ink-2); font-size: 12px; border-bottom-color: var(--axis); white-space: nowrap; }
+.risk tbody th { font-weight: 400; color: var(--ink-2); }
+.risk .num { text-align: right; font-variant-numeric: tabular-nums; }
+.risk th:first-child, .risk td:first-child { padding-left: 0; }
+.risk th:last-child, .risk td:last-child { padding-right: 0; }
+.risk tr:last-child th, .risk tr:last-child td { border-bottom: 0; }
+.risk .key { vertical-align: middle; }
+.risk .meta { display: block; color: var(--ink-2); font-size: 12px; white-space: nowrap; }
+
 /* simulation page: settings */
 .settings { display: grid; grid-template-columns: repeat(auto-fill, minmax(220px, 1fr)); gap: 8px 16px; margin: 12px 0 4px; }
 .settings div { min-width: 0; }
@@ -192,7 +209,7 @@ h2 { font-size: 15px; margin: 0; }
 .settings dd { margin: 0; font-variant-numeric: tabular-nums; overflow-wrap: anywhere; }
 .settings .help { display: block; color: var(--ink-2); font-size: 12px; }
 
-@media (max-width: 760px) {
+@media (max-width: 1100px) {
   /* the table becomes one card per simulation */
   .sims thead { display: none; }
   .sims, .sims tbody, .sims tr { display: block; }
@@ -203,6 +220,7 @@ h2 { font-size: 15px; margin: 0; }
   .sims td.name { grid-column: 1 / span 2; }
   .sims td.name::before, .sims td.spark-col::before { content: none; }
   .sims td.spark-col { grid-column: 3; grid-row: 1; width: auto; justify-self: end; align-self: center; }
+  .sims td.risk-wait { grid-column: 1 / -1; white-space: normal; font-size: 14px; color: var(--ink); }
   .sims .spark { width: 96px; height: 30px; }
   .sims .updated { white-space: normal; }
 }
