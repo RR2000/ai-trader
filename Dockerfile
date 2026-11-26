@@ -8,7 +8,8 @@ ENV PYTHONDONTWRITEBYTECODE=1 \
     PIP_NO_CACHE_DIR=1 \
     PIP_DISABLE_PIP_VERSION_CHECK=1 \
     OPENBLAS_NUM_THREADS=1 \
-    MODEL_PATH=/app/model/trading_model_episode_30.h5 \
+    MODEL_DIR=/app/model \
+    SIMULATIONS=/app/simulations.toml \
     PORT=8080
 
 WORKDIR /app
