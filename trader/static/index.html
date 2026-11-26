@@ -4,7 +4,7 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <meta name="color-scheme" content="light dark">
-  <title>automaticTraderAI · paper trading</title>
+  <title>ai-trader · paper trading</title>
   <meta name="description" content="A deep Q-network trained in 2023 trades a simulated portfolio on live Bitcoin prices, compared with buy and hold.">
   <link rel="icon" href="/favicon.svg" type="image/svg+xml">
   <link rel="stylesheet" href="/app.css">
@@ -14,7 +14,7 @@
   <main>
     <header class="top">
       <div>
-        <h1>automaticTraderAI</h1>
+        <h1>ai-trader</h1>
         <p class="sub">A 2023 reinforcement-learning model trading a <strong>simulated</strong> portfolio on live BTC/USDT prices.</p>
       </div>
       <p id="status" class="status" role="status" aria-live="polite"><span class="dot" aria-hidden="true"></span><span id="status-text">Loading…</span></p>
@@ -85,7 +85,7 @@
       <h2 id="about-title">What this is</h2>
       <p>An experiment from April 2023: a deep Q-network (two LSTM layers) trained with reinforcement learning on one-minute Bitcoin candles to choose <em>buy</em>, <em>sell</em> or <em>hold</em>. It was trained on a very small slice of data, so do not expect it to be clever.</p>
       <p>Every minute this service reads the latest closed BTC/USDT candles from Binance's public market data, builds the same input the model was trained on (30 minutes of price, volume, SMA&nbsp;10, SMA&nbsp;30, RSI, MACD and its signal, min-max scaled) and applies the model's choice to a pretend portfolio that started with 1,000 USDT: all in or all out, 0.1% fee per trade, no slippage. The comparison line bought BTC with the same 1,000 USDT at the same moment, paying one fee, and never sold.</p>
-      <p><strong>No real money is involved and nothing here is financial advice.</strong> Source code: <a href="https://github.com/RR2000/automaticTraderAI">github.com/RR2000/automaticTraderAI</a>.</p>
+      <p><strong>No real money is involved and nothing here is financial advice.</strong> Source code: <a href="https://github.com/RR2000/ai-trader">github.com/RR2000/ai-trader</a>.</p>
     </section>
   </main>
 </body>

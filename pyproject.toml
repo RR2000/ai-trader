@@ -1,5 +1,5 @@
 [project]
-name = "automatictraderai"
+name = "ai-trader"
 version = "1.0.0"
 description = "Live paper trading with a deep Q-network trained in 2023 on Bitcoin candles"
 readme = "README.md"

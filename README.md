@@ -1,4 +1,4 @@
-# automaticTraderAI
+# ai-trader
 
 A deep Q-network that trades Bitcoin, written in April 2023 as a reinforcement-learning experiment,
 now running live on a **simulated** portfolio: **https://trader.raoulrondinella.dev**
@@ -66,7 +66,8 @@ DB_HOST=localhost DB_NAME=trader DB_USER=trader DB_PASSWORD=... python -m trader
 Settings (environment): `DB_HOST`, `DB_PORT`, `DB_NAME`, `DB_USER`, `DB_PASSWORD` (or `DATABASE_URL`),
 `SYMBOL` (default `BTCUSDT`), `MODEL_PATH`, `PORT` (default 8080), `LOG_LEVEL`.
 
-Container image: `ghcr.io/rr2000/automatictraderai:main` (and `:sha-<commit>`), built by CI on every push to `main`.
+Container image: `ghcr.io/rr2000/ai-trader:main` (and `:sha-<commit>`), built by CI on every push to `main`;
+during the rename the same tags are also pushed under the old name `ghcr.io/rr2000/automatictraderai`.
 
 ### Tests
 
