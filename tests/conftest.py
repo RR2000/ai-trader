@@ -18,6 +18,7 @@ import pytest
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 
 MODEL = Path(__file__).resolve().parent.parent / "src" / "model" / "completed" / "trading_model_episode_30.h5"
+MODEL_DIRS = [MODEL.parent, MODEL.parent.parent / "mlp"]  # where the models of simulations.toml are
 
 
 def _free_port() -> int:
@@ -71,4 +72,4 @@ def simulations(text: str):
 
     from trader.config import parse
 
-    return parse(tomllib.loads(text), model_dir=MODEL.parent, networks={})
+    return parse(tomllib.loads(text), model_dir=MODEL_DIRS, networks={})

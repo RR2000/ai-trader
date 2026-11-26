@@ -5,7 +5,7 @@ from pathlib import Path
 
 import pytest
 
-from conftest import MODEL, simulations
+from conftest import MODEL, MODEL_DIRS, simulations
 from trader.config import load
 from trader.strategies import ConfigError
 
@@ -21,7 +21,7 @@ interval = "15m"
 
 
 def test_the_shipped_file_is_valid():
-    sims = load(ROOT / "simulations.toml", model_dir=MODEL.parent, networks={})
+    sims = load(ROOT / "simulations.toml", model_dir=MODEL_DIRS, networks={})
     ids = [s.id for s in sims]
     assert ids[0] == "dqn-2023" and len(ids) == len(set(ids)) >= 5
     assert {s.strategy.kind for s in sims} >= {"dqn", "sma-cross", "rsi", "bollinger", "dca", "buy-and-hold"}

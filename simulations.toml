@@ -8,7 +8,7 @@
 # Removing a block hides the simulation; its history stays in the database.
 #
 # Keys: id (lowercase letters, digits, dashes; it is the page address /s/<id>), name, description,
-# strategy (dqn, sma-cross, rsi, bollinger, dca, buy-and-hold), params (see README), and optionally
+# strategy (dqn, mlp, sma-cross, rsi, bollinger, dca, buy-and-hold), params (see README), and optionally
 # symbol, interval, start_cash, fee, which otherwise come from [defaults].
 
 [defaults]
@@ -25,6 +25,17 @@ strategy = "dqn"
 interval = "1m"
 [simulation.params]
 model = "trading_model_episode_30.h5"
+
+[[simulation]]
+id = "mlp-2026"
+name = "Neural network 2026"
+description = "A small network trained in 2026 on years of hourly candles and tested walk-forward. Its test results are in the README."
+strategy = "mlp"
+interval = "1h"
+[simulation.params]
+model = "mlp_btcusdt_1h_2026-10.npz"
+enter = 0.55
+leave = 0.45
 
 [[simulation]]
 id = "buy-and-hold"

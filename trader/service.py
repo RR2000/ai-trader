@@ -352,7 +352,7 @@ def store_from_env() -> Store:
 
 def load_simulations() -> list[Simulation]:
     path = os.environ.get("SIMULATIONS", str(ROOT / "simulations.toml"))
-    model_dir = os.environ.get("MODEL_DIR", str(ROOT / "src" / "model" / "completed"))
+    model_dir = os.environ.get("MODEL_DIR", os.pathsep.join(str(ROOT / "src" / "model" / d) for d in ("completed", "mlp")))
     return config_mod.load(path, model_dir=model_dir, networks={})
 
 

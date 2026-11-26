@@ -9,6 +9,7 @@ The accounting (fees, balances, buy and hold) is the same for all of them, in po
 from __future__ import annotations
 
 import math
+import os
 import re
 from dataclasses import dataclass
 from datetime import datetime, timedelta, timezone
@@ -49,6 +50,16 @@ class Param:
     help: str
     lo: float | None = None
     hi: float | None = None
+
+
+def find_model(model_dir, name: str) -> Path:
+    """A model file by name in MODEL_DIR: one directory, or several separated by os.pathsep (or a list)."""
+    dirs = model_dir if isinstance(model_dir, (list, tuple)) else str(model_dir or ".").split(os.pathsep)
+    if Path(name).name == name:
+        for d in dirs:
+            if (Path(d) / name).is_file():
+                return Path(d) / name
+    raise ConfigError(f"model file {name} not found in {os.pathsep.join(str(d) for d in dirs)}")
 
 
 def _fmt(x: float) -> str:
@@ -126,9 +137,7 @@ class DQN2023(Strategy):
     def setup(self, model_dir: Path | str | None = None, networks: dict | None = None, **_):
         from .model import QNetwork
 
-        path = Path(model_dir or ".") / self.params["model"]
-        if Path(self.params["model"]).name != self.params["model"] or not path.is_file():
-            raise ConfigError(f"model file {self.params['model']} not found in {model_dir}")
+        path = find_model(model_dir, self.params["model"])
         cache = networks if networks is not None else {}
         if str(path) not in cache:  # one copy of the weights however many simulations use it
             cache[str(path)] = QNetwork(str(path))
@@ -151,6 +160,45 @@ class DQN2023(Strategy):
                 "gets the last 30 one-minute candles as price, volume, SMA 10, SMA 30, RSI 14, MACD and MACD signal, "
                 "min-max scaled, and picks the action with the highest Q-value: buy with all the cash, sell everything, "
                 "or hold. It was trained on a very small slice of data, so do not expect it to be clever.")
+
+
+class Mlp(Strategy):
+    kind = "mlp"
+    title = "Small neural network (2026)"
+    PARAMS = {"model": Param(str, "mlp_btcusdt_1h_2026-10.npz", "the .npz file written by training/train_mlp.py, in MODEL_DIR"),
+              "enter": Param(float, 0.55, "buy when the predicted chance of a rise is above this", 0.5, 1),
+              "leave": Param(float, 0.45, "sell when it is below this", 0, 0.5)}
+
+    def setup(self, model_dir: Path | str | None = None, **_):
+        from .mlfeatures import MLP
+
+        self.net = MLP.load(find_model(model_dir, self.params["model"]))
+        self.horizon = int(self.net.meta["horizon_hours"])
+
+    @property
+    def lookback(self):
+        # 169 candles define every feature; the RSI's smoothing forgets where it started after a few hundred
+        return 400
+
+    def decide(self, candles, position):
+        from . import mlfeatures
+
+        rows = mlfeatures.table(candles.close, candles.volume)
+        if np.isnan(rows[-1]).any():
+            raise ValueError(f"need at least {mlfeatures.WARMUP + 1} candles, got {len(candles.close)}")
+        p = float(self.net.proba(rows[-1])[0])
+        action = mlfeatures.action(p, self.params["enter"], self.params["leave"])
+        return Decision(action, f"chance of a higher price in {self.horizon} h: {p:.1%}: {ACTIONS[action]}")
+
+    def explain(self, quote="USDT"):
+        p, m = self.params, self.net.meta
+        return (f"A small neural network ({len(m['features'])} inputs, {m['hidden'][0]} hidden units) trained in "
+                f"2026 on hourly BTC/USDT candles from January 2019 to {m['trained_until']}. From the last week of "
+                f"hourly closes and volumes (returns over 1 to 168 hours, volatility, RSI, distance from two moving "
+                f"averages, volume) it estimates the chance that the price is higher {self.horizon} hours later. "
+                f"Above {p['enter']:.0%} it buys with all the cash, below {p['leave']:.0%} it sells everything, in "
+                f"between it holds. Its walk-forward test, where it never saw the months it traded, is in the "
+                f"README, losses included.")
 
 
 class SmaCross(Strategy):
@@ -291,7 +339,7 @@ class BuyAndHold(Strategy):
                 "Every other simulation is compared with its own buy and hold from the moment it started.")
 
 
-STRATEGIES: dict[str, type[Strategy]] = {cls.kind: cls for cls in (DQN2023, SmaCross, Rsi, Bollinger, Dca, BuyAndHold)}
+STRATEGIES: dict[str, type[Strategy]] = {cls.kind: cls for cls in (DQN2023, Mlp, SmaCross, Rsi, Bollinger, Dca, BuyAndHold)}
 
 
 def build(kind: str, params: dict, **context) -> Strategy:

@@ -70,15 +70,63 @@ benchmark. A strategy only sees closed candles and the stored position, so a res
 | strategy | what it does | parameters (default) |
 |---|---|---|
 | `dqn` | the 2023 deep Q-network, see below; it needs one-minute candles to make sense | `model` (`trading_model_episode_30.h5`): file in `MODEL_DIR`; the image contains only this one |
+| `mlp` | the small network trained in 2026, see below: buys when the estimated chance of a higher price 24 hours later is above `enter`, sells below `leave` | `model` (`mlp_btcusdt_1h_2026-10.npz`), `enter` (0.55), `leave` (0.45) |
 | `sma-cross` | trend following: holds the coin while the fast simple moving average is above the slow one, sells when it drops below | `fast` (20), `slow` (50): candles, fast < slow |
 | `rsi` | mean reversion on the RSI (Wilder smoothing, as `ta`): buys below `oversold`, sells above `overbought` | `period` (14), `oversold` (30), `overbought` (70) |
 | `bollinger` | mean reversion on Bollinger Bands: buys on a close below the lower band, sells above the upper band | `period` (20): candles of the average; `width` (2.0): standard deviations |
 | `dca` | dollar-cost averaging: buys a fixed amount at fixed times until the cash runs out, never sells | `amount` (25): quote currency per buy; `every` (`1d`): like `30m`, `12h`, `7d` |
 | `buy-and-hold` | buys with all the cash at the first candle and never sells: the reference | none |
 
-The shipped file starts with the 2023 DQN (`dqn-2023`, one-minute candles) and five classic ones on BTC/USDT,
-1,000 USDT each: buy and hold (15 min), SMA crossover 20/50 (1 h), RSI 14 30/70 (15 min), Bollinger 20/2
-(15 min) and daily DCA of 25 USDT (1 h candles).
+The shipped file has the 2023 DQN (`dqn-2023`, one-minute candles), the 2026 network (`mlp-2026`, hourly
+candles) and five classic ones on BTC/USDT, 1,000 USDT each: buy and hold (15 min), SMA crossover 20/50 (1 h),
+RSI 14 30/70 (15 min), Bollinger 20/2 (15 min) and daily DCA of 25 USDT (1 h candles).
+
+## The 2026 network (`mlp-2026`) and its honest test
+
+A second attempt at an AI, done more carefully than in 2023, and tested before going live.
+
+- **Data**: every hourly BTC/USDT candle from January 2019 to October 2026 (68,605 hours) from Binance's public
+  archive, each monthly file checked against its SHA-256.
+- **Inputs** (`trader/mlfeatures.py`, the same code in training and live): log returns over 1, 4, 12, 24, 72 and
+  168 hours, volatility over 24 and 168 hours, RSI 14, distance from the 24- and 168-hour averages, volume against
+  its weekly average. Only past candles; a test checks that changing the future changes nothing.
+- **Target**: is the close 24 hours later higher? **Model**: 12 inputs, 16 hidden units (ReLU), one output
+  (sigmoid), trained with scikit-learn; live it is a 5 KB `.npz` file run in NumPy, no new dependency.
+- **Policy**: buy with all the cash above 55%, sell everything below 45%, hold in between.
+- **Walk-forward**: for each of the 24 quarters from January 2021 to October 2026, a network is trained only on
+  the hours before that quarter (the last 24 dropped, since their target looks into it) and then trades that
+  quarter. No setting was tuned on these results: they were fixed before the first run.
+- The same hours are traded by buy and hold and the classic strategies, with the same code and accounting
+  (1,000 USDT, 0.1% fee, no slippage, all on hourly candles here).
+
+Results, January 2021 to October 2026 (`training/results.json`):
+
+| strategy | return | max drawdown | trades | fees (USDT) | 2021 | 2022 | 2023 | 2024 | 2025 | 2026 |
+|---|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|
+| network (walk-forward) | -59.5% | -78.7% | 2005 | 1,746 | +0.8% | -52.6% | +73.0% | +7.7% | -34.6% | -30.4% |
+| buy and hold | +167.3% | -77.2% | 1 | 1 | +59.2% | -64.2% | +155.6% | +121.3% | -6.3% | -11.5% |
+| SMA crossover 20/50 | -39.5% | -65.9% | 1214 | 1,056 | -1.0% | -43.2% | +59.5% | +28.8% | -45.7% | -3.6% |
+| RSI 14 30/70 | -63.7% | -78.6% | 375 | 194 | -16.9% | -60.0% | +11.8% | +1.1% | +11.8% | -13.5% |
+| Bollinger 20/2 | -57.0% | -72.6% | 1223 | 941 | +9.9% | -48.5% | +12.9% | +21.9% | -13.9% | -35.8% |
+| DCA 25 USDT a day | +121.7% | -77.2% | 40 | 1 | +32.1% | -64.2% | +155.6% | +121.3% | -6.3% | -11.5% |
+
+**It loses.** Its 24-hour calls were right 51.7% of the time, against 51.3% for "always up": no real edge, and
+about 2,000 trades paid 1,746 USDT in fees on a 1,000 USDT portfolio. None of the active strategies beat buy and
+hold over these years; neither does the network. It runs live anyway, because the point of the site is to
+show what happens, not to pick the winner afterwards. Changing the settings now and testing again on the same
+quarters would only fit them to the past.
+
+Reproduce (about half an hour on a laptop CPU, no GPU; the download is 4 MB):
+
+```bash
+pip install --no-deps -r requirements-dev.txt
+python training/train_mlp.py   # writes training/results.json and src/model/mlp/mlp_btcusdt_1h_<month>.npz
+```
+
+Fixed seeds: same data and library versions should give the same numbers (not compared across machines). Behind a proxy that Python's TLS rejects, put the monthly
+zip files from `data.binance.vision` in `training/.cache/` with any other tool (they are checked against their
+SHA-256 only when the script downloads them, so check them yourself). A retrained model is a new file: give it
+a new simulation id, so the live history of `mlp-2026` stays the one of its model.
 
 ## The live service (`trader/`)
 
