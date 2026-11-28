@@ -28,7 +28,7 @@
     if (described || !state) return;
     described = true;
     const s = state.simulation;
-    document.title = s.name + " · ai-trader";
+    document.title = s.name + " · AI Trader";
     $("sim-name").textContent = s.name;
     $("sim-sub").textContent = (s.description ? s.description + " " : "") + s.strategy_title + " on " + s.base + "/" + s.quote
       + ", " + T.candles(s.interval) + ".";
